@@ -1,0 +1,18 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-service
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/maosella/springcloudMSA
+          searchPaths: microservices-config
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-service:8761/eureka #contenedor de eureka
+

@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    config:
+      fail-fast: true #Si no encuentra el archivo de configuracion, no arranca el servicio
+      discovery:
+        enabled: true
+        service-id: config-service
+  profiles:
+    active: dev
+
+eureka:
+    client:
+        service-url:
+          defaultZone: http://eureka-service:8761/eureka #contenedor de eureka
