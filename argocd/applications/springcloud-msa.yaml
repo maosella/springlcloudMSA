@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: springcloud-msa
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/maosella/springcloudMSA
+    targetRevision: HEAD
+    path: helm/springcloud-msa
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: springcloud-msa
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

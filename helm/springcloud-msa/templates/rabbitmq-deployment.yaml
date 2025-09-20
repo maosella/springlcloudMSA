@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  labels:
+    app: rabbitmq
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.rabbitmq.replicaCount }}
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+        {{- include "springcloud-msa.standardLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: rabbitmq
+          image: "{{ .Values.rabbitmq.image.repository }}:{{ .Values.rabbitmq.image.tag }}"
+          imagePullPolicy: {{ .Values.rabbitmq.image.pullPolicy }}
+          ports:
+            - name: amqp
+              containerPort: {{ .Values.rabbitmq.service.ports.amqp }}
+            - name: management
+              containerPort: {{ .Values.rabbitmq.service.ports.management }}
+          resources:
+{{ toYaml .Values.rabbitmq.resources | indent 12 }}
+      {{- if .Values.rabbitmq.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.rabbitmq.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.rabbitmq.affinity }}
+      affinity:
+{{ toYaml .Values.rabbitmq.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.rabbitmq.tolerations }}
+      tolerations:
+{{ toYaml .Values.rabbitmq.tolerations | indent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.rabbitmq.service.name }}
+  labels:
+    app: rabbitmq
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.rabbitmq.service.type }}
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: {{ .Values.rabbitmq.service.ports.amqp }}
+      targetPort: amqp
+    - name: management
+      port: {{ .Values.rabbitmq.service.ports.management }}
+      targetPort: management

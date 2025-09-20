@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin
+  labels:
+    app: zipkin
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.zipkin.replicaCount }}
+  selector:
+    matchLabels:
+      app: zipkin
+  template:
+    metadata:
+      labels:
+        app: zipkin
+        {{- include "springcloud-msa.standardLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: zipkin
+          image: "{{ .Values.zipkin.image.repository }}:{{ .Values.zipkin.image.tag }}"
+          imagePullPolicy: {{ .Values.zipkin.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.zipkin.service.port }}
+          resources:
+{{ toYaml .Values.zipkin.resources | indent 12 }}
+      {{- if .Values.zipkin.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.zipkin.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.zipkin.affinity }}
+      affinity:
+{{ toYaml .Values.zipkin.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.zipkin.tolerations }}
+      tolerations:
+{{ toYaml .Values.zipkin.tolerations | indent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.zipkin.service.name }}
+  labels:
+    app: zipkin
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.zipkin.service.type }}
+  selector:
+    app: zipkin
+  ports:
+    - port: {{ .Values.zipkin.service.port }}
+      targetPort: http
+      name: http

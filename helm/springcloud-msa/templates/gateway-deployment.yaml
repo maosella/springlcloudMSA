@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    app: api-gateway
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.apiGateway.replicaCount }}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        {{- include "springcloud-msa.standardLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: api-gateway
+          image: "{{ .Values.apiGateway.image.repository }}:{{ .Values.apiGateway.image.tag }}"
+          imagePullPolicy: {{ .Values.apiGateway.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.apiGateway.service.targetPort }}
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.apiGateway.javaOpts | quote }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: dev
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 15
+          resources:
+{{ toYaml .Values.apiGateway.resources | indent 12 }}
+      {{- if .Values.apiGateway.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.apiGateway.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.apiGateway.affinity }}
+      affinity:
+{{ toYaml .Values.apiGateway.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.apiGateway.tolerations }}
+      tolerations:
+{{ toYaml .Values.apiGateway.tolerations | indent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.apiGateway.service.name }}
+  labels:
+    app: api-gateway
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.apiGateway.service.type }}
+  selector:
+    app: api-gateway
+  ports:
+    - port: {{ .Values.apiGateway.service.port }}
+      targetPort: http
+      name: http

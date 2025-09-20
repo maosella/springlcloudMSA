@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  labels:
+    app: catalog-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.catalogService.replicaCount }}
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+        {{- include "springcloud-msa.standardLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: catalog-service
+          image: "{{ .Values.catalogService.image.repository }}:{{ .Values.catalogService.image.tag }}"
+          imagePullPolicy: {{ .Values.catalogService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.catalogService.service.port }}
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.catalogService.javaOpts | quote }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: dev
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          resources:
+{{ toYaml .Values.catalogService.resources | indent 12 }}
+      {{- if .Values.catalogService.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.catalogService.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.catalogService.affinity }}
+      affinity:
+{{ toYaml .Values.catalogService.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.catalogService.tolerations }}
+      tolerations:
+{{ toYaml .Values.catalogService.tolerations | indent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.catalogService.service.name }}
+  labels:
+    app: catalog-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.catalogService.service.type }}
+  selector:
+    app: catalog-service
+  ports:
+    - port: {{ .Values.catalogService.service.port }}
+      targetPort: http
+      name: http

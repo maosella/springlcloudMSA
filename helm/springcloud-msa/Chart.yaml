@@ -1,0 +1,7 @@
+apiVersion: v2
+name: springcloud-msa
+version: 0.1.0
+description: Helm chart for deploying the Spring Cloud microservices architecture
+kubeVersion: ">=1.21.0"
+type: application
+appVersion: "1.0.0"
