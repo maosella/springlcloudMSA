@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-service
+  labels:
+    app: eureka-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.eureka.replicaCount }}
+  selector:
+    matchLabels:
+      app: eureka-service
+  template:
+    metadata:
+      labels:
+        app: eureka-service
+        {{- include "springcloud-msa.standardLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: eureka-service
+          image: "{{ .Values.eureka.image.repository }}:{{ .Values.eureka.image.tag }}"
+          imagePullPolicy: {{ .Values.eureka.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.eureka.service.port }}
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.eureka.javaOpts | quote }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          resources:
+{{ toYaml .Values.eureka.resources | indent 12 }}
+      {{- if .Values.eureka.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.eureka.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.eureka.affinity }}
+      affinity:
+{{ toYaml .Values.eureka.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.eureka.tolerations }}
+      tolerations:
+{{ toYaml .Values.eureka.tolerations | indent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.eureka.service.name }}
+  labels:
+    app: eureka-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.eureka.service.type }}
+  selector:
+    app: eureka-service
+  ports:
+    - port: {{ .Values.eureka.service.port }}
+      targetPort: http
+      name: http

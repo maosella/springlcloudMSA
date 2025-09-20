@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: series-service
+  labels:
+    app: series-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.seriesService.replicaCount }}
+  selector:
+    matchLabels:
+      app: series-service
+  template:
+    metadata:
+      labels:
+        app: series-service
+        {{- include "springcloud-msa.standardLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: series-service
+          image: "{{ .Values.seriesService.image.repository }}:{{ .Values.seriesService.image.tag }}"
+          imagePullPolicy: {{ .Values.seriesService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.seriesService.service.port }}
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.seriesService.javaOpts | quote }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: dev
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          resources:
+{{ toYaml .Values.seriesService.resources | indent 12 }}
+      {{- if .Values.seriesService.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.seriesService.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.seriesService.affinity }}
+      affinity:
+{{ toYaml .Values.seriesService.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.seriesService.tolerations }}
+      tolerations:
+{{ toYaml .Values.seriesService.tolerations | indent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.seriesService.service.name }}
+  labels:
+    app: series-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.seriesService.service.type }}
+  selector:
+    app: series-service
+  ports:
+    - port: {{ .Values.seriesService.service.port }}
+      targetPort: http
+      name: http

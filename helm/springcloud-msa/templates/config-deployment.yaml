@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+  labels:
+    app: config-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.configServer.replicaCount }}
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+        {{- include "springcloud-msa.standardLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: config-service
+          image: "{{ .Values.configServer.image.repository }}:{{ .Values.configServer.image.tag }}"
+          imagePullPolicy: {{ .Values.configServer.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.configServer.service.port }}
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.configServer.javaOpts | quote }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: dev
+            - name: SPRING_CLOUD_CONFIG_SERVER_GIT_URI
+              value: {{ .Values.configServer.env.gitUri | quote }}
+            - name: SPRING_CLOUD_CONFIG_SERVER_GIT_SEARCH_PATHS
+              value: {{ .Values.configServer.env.gitSearchPaths | quote }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 15
+          resources:
+{{ toYaml .Values.configServer.resources | indent 12 }}
+      {{- if .Values.configServer.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.configServer.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.configServer.affinity }}
+      affinity:
+{{ toYaml .Values.configServer.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.configServer.tolerations }}
+      tolerations:
+{{ toYaml .Values.configServer.tolerations | indent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.configServer.service.name }}
+  labels:
+    app: config-service
+    {{- include "springcloud-msa.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.configServer.service.type }}
+  selector:
+    app: config-service
+  ports:
+    - port: {{ .Values.configServer.service.port }}
+      targetPort: http
+      name: http
